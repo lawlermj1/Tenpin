@@ -1,0 +1,99 @@
+*Main> main
+
+Scoring 
+ 
+frames2ScoreDirect perfectGame = exp 300 
+ Frames = [(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0)]
+ Values = [30,30,30,30,30,30,30,30,30,30,20,10]
+ Run Total = [30,60,90,120,150,180,210,240,270,300,320,330] Total = 300
+
+frames2ScoreMap perfectGame; exp = 300; act = 300
+
+frames2ScoreTypeMap perfectGame; exp = 300; act = 
+ Frames = [(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0)]
+ Values = [30,30,30,30,30,30,30,30,30,30]
+ Run Total = [30,60,90,120,150,180,210,240,270,300] Total = 300
+
+frames2ScoreDirect doublePinfall = exp 57 
+ Frames = [(10,0),(10,0),(9,0)]
+ Values = [29,19,9]
+ Run Total = [29,48,57] Total = 57
+
+frames2ScoreMap doublePinfall; exp = 57; act = 57
+
+frames2ScoreTypeMap doublePinfall; exp = 300; act = 
+ Frames = [(10,0),(10,0),(9,0)]
+ Values = [29,19,9,0,0,0,0,0,0,0]
+ Run Total = [29,48,57,57,57,57,57,57,57,57] Total = 57
+
+frames2ScoreDirect turkeyPinfall = exp 105 
+ Frames = [(10,0),(10,0),(10,0),(8,2),(8,1)]
+ Values = [30,28,20,18,9]
+ Run Total = [30,58,78,96,105] Total = 105
+
+frames2ScoreMap turkeyPinfall; exp = 105; act = 105
+
+frames2ScoreTypeMap turkeyPinfall; exp = 300; act = 
+ Frames = [(10,0),(10,0),(10,0),(8,2),(8,1)]
+ Values = [30,28,20,18,9,0,0,0,0,0]
+ Run Total = [30,58,78,96,105,105,105,105,105,105] Total = 105
+
+frames2ScoreDirect sparePinfall = exp 20 
+ Frames = [(7,3),(4,2)]
+ Values = [14,6]
+ Run Total = [14,20] Total = 20
+
+frames2ScoreMap sparePinfall; exp = 20; act = 20
+
+frames2ScoreTypeMap sparePinfall; exp = 300; act = 
+ Frames = [(7,3),(4,2)]
+ Values = [14,6,0,0,0,0,0,0,0,0]
+ Run Total = [14,20,20,20,20,20,20,20,20,20] Total = 20
+
+frames2ScoreDirect game1 = exp 168 
+ Frames = [(10,0),(7,3),(7,2),(9,1),(10,0),(10,0),(10,0),(2,3),(6,4),(7,3),(3,0)]
+ Values = [20,17,9,20,30,22,15,5,17,13,3]
+ Run Total = [20,37,46,66,96,118,133,138,155,168,171] Total = 168
+
+frames2ScoreMap game1; exp = 168; act = 168
+
+frames2ScoreTypeMap game1; exp = 300; act = 
+ Frames = [(10,0),(7,3),(7,2),(9,1),(10,0),(10,0),(10,0),(2,3),(6,4),(7,3),(3,0)]
+ Values = [20,17,9,20,30,22,15,5,17,13]
+ Run Total = [20,37,46,66,96,118,133,138,155,168] Total = 168
+
+
+Input Checks 
+ 
+frames2ScoreDirect badFrames = 
+ Frames = [(-1,-2),(4,-5),(11,-3),(1,11),(10,9),(8,8),(7,7),(6,6),(5,5),(1,9),(2,8),(3,7)]
+ Values = [-3,-1,8,12,35,16,14,12,11,12,13,10]
+ Run Total = [-3,-4,4,16,51,67,81,93,104,116,129,139] Total = 116
+
+inValidFrames = 
+Throw 1 pins cannot be negative: t1 = -1
+Throw 2 pins cannot be negative: t2 = -5
+Throw 1 pins cannot be greater than 10: t1 = 11
+Throw 2 pins cannot be greater than 10: t2 = 11
+If a first strike, throw 2 must be zero: t1 = 10 t2 = 9
+If not a first strike, throw 1 and 2 pins total cannot be greater than 10: t1 = 8 t2 = 8
+If not a first strike, throw 1 and 2 pins total cannot be greater than 10: t1 = 7 t2 = 7
+If not a first strike, throw 1 and 2 pins total cannot be greater than 10: t1 = 6 t2 = 6
+areAllFramesOK = No, 12 frames, and 10 and 11 are not strikes. Frames = [(-1,-2),(4,-5),(11,-3),(1,11),(10,9),(8,8),(7,7),(6,6),(5,5),(1,9),(2,8),(3,7)]
+
+
+Property Tests 
+ 
+prop_frames2ScoreMap_eq_frames2ScoreDirect_No_filter = True
+
+frames2ScoreMap = 116
+
+prop_frames2ScoreMap_eq_frames2ScoreDirect_filter_OK = 
++++ OK, passed 100 tests.
+prop_frames2ScoreMap_eq_frames2ScoreDirect_No_filter = 
++++ OK, passed 100 tests.
+prop_frames2ScoreMap_eq_frames2ScoreDirect_filter_Wrong = 
+*** Failed! Falsifiable (after 2 tests): 
+[(-1,0)]
+frames2ScoreMap perfectGame = 
+300
