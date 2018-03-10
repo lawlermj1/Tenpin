@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleContexts #-} 
 
+{-# LANGUAGE FlexibleContexts #-} 
 --    assume that input is Frames list 
 --    include spare, strike 
 --    exclude fouls, splits 
@@ -9,7 +9,7 @@ import Data.List
 import Test.QuickCheck 
 
 type Frame = (Int,Int) 
-type Frames = [Frame]  
+type Frames = [Frame] 
 
 data Score = Score { 
           scoreFrames :: Frames 
@@ -41,13 +41,23 @@ isValidFrame (t1, t2)
 inValidFrames :: Frames -> [String] 
 inValidFrames fs = lefts (map isValidFrame fs) 
     
---    checks if frame pins obey tenpin rules 
+--    checks if frames set obeys tenpin rules 
 areAllFramesOK :: Frames -> Either String Frames  
 areAllFramesOK fs 
 --    but ok if perfect 
-    | length fs > 10 = Left ("No, too many frames. max is 10. number = " ++ show (length fs)) 
+    | lfs > 12 = Left ( "No, too many frames. max is 10. Frames = " ++ show fs )  
+--    must be strike on 10th and 11th to have 12 frames 
+--    (!!) :: [a] -> Int -> a is safe, because length determined first 
+    | lfs == 12 && not ( isStrike tenth && isStrike eleventh ) = Left ( "No, 12 frames, and 10 and 11 are not strikes. Frames = " ++ show fs )
+--    must be spare or strike on 10th to have 11 frames 
+    | lfs == 11 && notSpare tenth = Left ( "No, 11 frames, and 10 is not a strike or a spare. Frames = " ++ show fs ) 
+--    score too high 
     | frames2ScoreMap fs > 300 = Left ("No, total score too high. max is 300. total = " ++ show (frames2ScoreMap fs)) 
-    | otherwise = Right fs
+    | otherwise = Right fs 
+    where 
+        lfs = length fs 
+        tenth = fs !! 9 
+        eleventh = fs !! 10 
 
 ---    Summing the frames 
 isStrike :: Frame -> Bool 
@@ -59,6 +69,9 @@ notStrike = (< 10).fst
 isSpare :: Frame -> Bool 
 isSpare f = notStrike f && fst f + snd f == 10 
 
+notSpare :: Frame -> Bool 
+notSpare f = fst f + snd f < 10 
+
 --    simplest case 
 sumFrame :: Frame -> Int 
 sumFrame f = fst f + snd f 
@@ -68,23 +81,10 @@ sumFrame f = fst f + snd f
 --    perfect game with 2 more strikes... 
 --    if tenth frame is a strike, then 11th and 12th throw happen 
 --    if tenth frame is a spare, then 11th throw happens 
-
---  scoring the first frame or f1 only 
-sumFrames :: Frames -> Int 
---    empty frames  
-sumFrames [] = 0 
---    single frame case     
-sumFrames [f1] 
-    | otherwise = sumFrame f1 
---    2 frame case 
-sumFrames (f1:f2:[]) 
---    2 frame; 1 strike and a non-strike 
-    | isStrike f1 && notStrike f2 = sumFrame f1 + sumFrame f2 
---   2 frame; 1 spare and whatever 
-    | isSpare f1 = sumFrame f1 + fst f2 
-    | otherwise = sumFrame f1    
---    3 or more frame case 
-sumFrames (f1:f2:f3:_) 
+--  scoring rules using a frame triplet 
+sumFramesTriple :: ( Frame, Frame, Frame ) -> Int 
+--    3 frame case 
+sumFramesTriple ( f1, f2, f3) 
 --    3 frame; 3 strikes 
     | isStrike f1 && isStrike f2 && isStrike f3 = sumFrame f1 + sumFrame f2 + sumFrame f3 
 --    3 frame; 2 strikes and a non-strike 
@@ -93,10 +93,23 @@ sumFrames (f1:f2:f3:_)
     | isStrike f1 && notStrike f2  = sumFrame f1 + sumFrame f2     
 --    2 frame; 1 spare and whatever 
     | isSpare f1 = sumFrame f1 + fst f2 
+--    no bonus, so take current frame only 
     | otherwise = sumFrame f1 
+ 
+--    two distinct scoring functions means that they can be used in the properties below    
+--  EXPLICIT Recursion; this is needed for explicit recursion below 
+--    using the raw frames list as input 
+sumFrames :: Frames -> Int     
+--    empty frames  
+sumFrames [] = 0 
+--    single frame case     
+sumFrames [f1] = sumFrame f1 
+--    2 frame case 
+sumFrames (f1:f2:[]) = sumFramesTriple ( f1, f2, (0,0) )   
+--    3 or more frame case 
+sumFrames (f1:f2:f3:_) = sumFramesTriple ( f1, f2, f3 )      
 
---    two distinct scoring functions means that they can be used in the properties below   
---    direct recursion example 
+--    explicit recursion example 
 frames2ScoreDirect :: Score -> Frames -> Score 
 --    base value + take first 10 frames only only 
 frames2ScoreDirect ss [] = ss { scoreTotal = sum (take 10 (scoreValues ss)) } 
@@ -112,29 +125,54 @@ frames2ScoreDirect ss (f:fs)
             scoreRunningTotal = (scoreRunningTotal ss) ++ [sum ((scoreValues ss) ++ [sumFrames (f:fs)])]  
             }) fs 
 
---    recursion using map  
---    note that this uses an overly simplistic scoring function 
+--    MAP Recursion 
+--     this provides an alternate method to invoke the scoring rules. 
+--    this will then be used in the property testing below.  
+--    add dummy Frames to make full length of 12 
+fillFrames :: Frames -> Frames 
+fillFrames fs 
+    = fs ++ replicate len (0,0) 
+    where 
+        len = if 12 - (length fs) < 0 then 0 else 12 - (length fs) 
+
+--    convert list into list of triples 
+list2Triples :: [a] -> [( a, a, a )] 
+list2Triples (x:y:z:ws) = [( x, y, z )] ++ list2Triples (y:z:ws) 
+list2Triples (x:y:[]) = [] 
+
+--    fill out frames to 12, convert to triples, then score each triple, and sum 
 frames2ScoreMap :: Frames -> Int  
-frames2ScoreMap fs = sum (map sumFrame fs)   
+frames2ScoreMap fs = sum (map sumFramesTriple ((list2Triples.fillFrames) fs))  
 
---    point free style 
-frames2ScoreFold :: Frames -> Int  
-frames2ScoreFold = foldl (\acc f -> acc + sumFrame f) 0 
+--    fill out frames to 12, convert to triples, then score each triple, and sum 
+frames2ScoreTypeMap :: Frames -> Score   
+frames2ScoreTypeMap fs 
+    = scoreDefault { 
+            scoreFrames = fs, 
+--    calc value for all frames  
+            scoreValues = svs, 
+--    get running total of frames 
+            scoreRunningTotal = scanl1 (+) svs, 
+--    final score 
+            scoreTotal = sum svs 
+            } 
+        where svs = map sumFramesTriple ((list2Triples.fillFrames) fs)   
 
---    property function equivalence 
-prop_frames2ScoreMap_eq_frames2ScoreFold :: Frames -> Bool 
-prop_frames2ScoreMap_eq_frames2ScoreFold fs = frames2ScoreMap fs == frames2ScoreFold fs  
+--    property function equivalence with no filtering except length  
+prop_frames2ScoreMap_eq_frames2ScoreDirect_No_filter :: Frames -> Bool 
+prop_frames2ScoreMap_eq_frames2ScoreDirect_No_filter fs = frames2ScoreMap gs == scoreTotal ( frames2ScoreDirect scoreDefault gs ) 
+    where gs = take 10 fs 
 
 --    property function equivalence 
 --    this is deliberately broken, so it will always fail quickCheck 
-prop_frames2ScoreMap_eq_frames2ScoreFold_filter_Wrong :: Frames -> Bool 
-prop_frames2ScoreMap_eq_frames2ScoreFold_filter_Wrong fs = frames2ScoreMap (filter (isRight.isValidFrame) fs) == frames2ScoreFold fs  
+prop_frames2ScoreMap_eq_frames2ScoreDirect_filter_Wrong :: Frames -> Bool 
+prop_frames2ScoreMap_eq_frames2ScoreDirect_filter_Wrong fs = frames2ScoreMap (filter (isRight.isValidFrame) fs) == scoreTotal ( frames2ScoreDirect scoreDefault fs )  
 
---    property function equivalence 
-prop_frames2ScoreMap_eq_frames2ScoreFold_filter_OK :: Frames -> Bool 
-prop_frames2ScoreMap_eq_frames2ScoreFold_filter_OK fs 
-    = frames2ScoreMap gs == frames2ScoreFold gs   
-    where gs = (filter (isRight.isValidFrame) fs) 
+--    property function equivalence with filtering for valid frame values 
+prop_frames2ScoreMap_eq_frames2ScoreDirect_filter_OK :: Frames -> Bool 
+prop_frames2ScoreMap_eq_frames2ScoreDirect_filter_OK fs 
+    = frames2ScoreMap gs == scoreTotal (frames2ScoreDirect scoreDefault gs)    
+    where gs = fromRight [] (areAllFramesOK (filter (isRight.isValidFrame) fs))  
 
 
 main = do 
@@ -150,14 +188,24 @@ main = do
 --   Scoring 
     putStrLn $ "\nScoring \n "
     putStrLn $ "frames2ScoreDirect perfectGame = exp 300 " ++ show ( frames2ScoreDirect scoreDefault perfectGame ) ++ "\n" 
+    putStrLn $ "frames2ScoreMap perfectGame; exp = 300; act = " ++ show ( frames2ScoreMap perfectGame ) ++ "\n" 
+    putStrLn $ "frames2ScoreTypeMap perfectGame; exp = 300; act = " ++ show ( frames2ScoreTypeMap perfectGame ) ++ "\n" 
 
     putStrLn $ "frames2ScoreDirect doublePinfall = exp 57 " ++ show ( frames2ScoreDirect scoreDefault doublePinfall ) ++ "\n" 
-
+    putStrLn $ "frames2ScoreMap doublePinfall; exp = 57; act = " ++ show ( frames2ScoreMap doublePinfall ) ++ "\n"  
+    putStrLn $ "frames2ScoreTypeMap doublePinfall; exp = 300; act = " ++ show ( frames2ScoreTypeMap doublePinfall ) ++ "\n" 
+    
     putStrLn $ "frames2ScoreDirect turkeyPinfall = exp 105 " ++ show ( frames2ScoreDirect scoreDefault turkeyPinfall ) ++ "\n" 
-
+    putStrLn $ "frames2ScoreMap turkeyPinfall; exp = 105; act = " ++ show ( frames2ScoreMap turkeyPinfall ) ++ "\n" 
+    putStrLn $ "frames2ScoreTypeMap turkeyPinfall; exp = 300; act = " ++ show ( frames2ScoreTypeMap turkeyPinfall ) ++ "\n" 
+    
     putStrLn $ "frames2ScoreDirect sparePinfall = exp 20 " ++ show ( frames2ScoreDirect scoreDefault sparePinfall ) ++ "\n" 
+    putStrLn $ "frames2ScoreMap sparePinfall; exp = 20; act = " ++ show ( frames2ScoreMap sparePinfall ) ++ "\n" 
+    putStrLn $ "frames2ScoreTypeMap sparePinfall; exp = 300; act = " ++ show ( frames2ScoreTypeMap sparePinfall ) ++ "\n" 
     
     putStrLn $ "frames2ScoreDirect game1 = exp 168 " ++ show ( frames2ScoreDirect scoreDefault game1 ) ++ "\n" 
+    putStrLn $ "frames2ScoreMap game1; exp = 168; act = " ++ show ( frames2ScoreMap game1 ) ++ "\n" 
+    putStrLn $ "frames2ScoreTypeMap game1; exp = 300; act = " ++ show ( frames2ScoreTypeMap game1 ) ++ "\n" 
     
 --    Input error checks 
     putStrLn $ "\nInput Checks \n "
@@ -165,7 +213,7 @@ main = do
     
     putStrLn $ "frames2ScoreDirect badFrames = " ++ show ( frames2ScoreDirect scoreDefault badFrames ) ++ "\n" 
     
-    putStrLn $ "inValidFrames = " ++ "\n" ++ intercalate "\n" ( inValidFrames badFrames ) ++ "\n" 
+    putStrLn $ "inValidFrames = " ++ "\n" ++ intercalate "\n" ( inValidFrames badFrames )  
     
     putStrLn $ "areAllFramesOK = " ++ (fromLeft "Yes" (areAllFramesOK badFrames) ) ++ "\n"  
 
@@ -174,23 +222,22 @@ main = do
 --    they are included to demo how this could be done with more work 
     putStrLn $ "\nProperty Tests \n "
     
-    putStrLn $ "prop_frames2ScoreMap_eq_frames2ScoreFold = " ++ show ( prop_frames2ScoreMap_eq_frames2ScoreFold badFrames ) ++ "\n" 
+    putStrLn $ "prop_frames2ScoreMap_eq_frames2ScoreDirect_No_filter = " ++ show ( prop_frames2ScoreMap_eq_frames2ScoreDirect_No_filter badFrames ) ++ "\n" 
     
     putStrLn $ "frames2ScoreMap = " ++ show ( frames2ScoreMap badFrames ) ++ "\n" 
-    putStrLn $ "frames2ScoreFold = " ++ show ( frames2ScoreFold badFrames ) ++ "\n" 
 
-    putStrLn $ "prop_frames2ScoreMap_eq_frames2ScoreFold_filter_OK = "
-    quickCheck prop_frames2ScoreMap_eq_frames2ScoreFold_filter_OK  
+    putStrLn $ "prop_frames2ScoreMap_eq_frames2ScoreDirect_filter_OK = "
+    quickCheck prop_frames2ScoreMap_eq_frames2ScoreDirect_filter_OK  
     
-    putStrLn $ "prop_frames2ScoreMap_eq_frames2ScoreFold = " 
-    quickCheck prop_frames2ScoreMap_eq_frames2ScoreFold  
-    
-    putStrLn $ "prop_frames2ScoreMap_eq_frames2ScoreFold_filter_Wrong = " 
-    quickCheck prop_frames2ScoreMap_eq_frames2ScoreFold_filter_Wrong  
+    putStrLn $ "prop_frames2ScoreMap_eq_frames2ScoreDirect_No_filter = " 
+    quickCheck prop_frames2ScoreMap_eq_frames2ScoreDirect_No_filter  
 
-    putStrLn $ "badFrames = "     
+    putStrLn $ "prop_frames2ScoreMap_eq_frames2ScoreDirect_filter_Wrong = " 
+    quickCheck prop_frames2ScoreMap_eq_frames2ScoreDirect_filter_Wrong  
+
+    putStrLn $ "frames2ScoreMap perfectGame = "     
     
-    mapM_ (putStrLn.show) badFrames 
+    mapM_ (putStrLn.show) [(frames2ScoreMap perfectGame)]  
     
 --------------------------
 --    Not used
@@ -203,8 +250,9 @@ fnEq f g = f == g
 --    function equality property  
 --    But error: 
 --    No instance for (Eq (Frames -> Bool)) 
-prop_frames2ScoreMap_eq_frames2ScoreFold_fn :: (Frames -> Bool) -> (Frames -> Bool) -> Bool 
-prop_frames2ScoreMap_eq_frames2ScoreFold_fn frames2ScoreMap frames2ScoreFold
---    = fnEq frames2ScoreMap frames2ScoreFold 
+prop_frames2ScoreMap_eq_frames2ScoreDirect_fn :: (Frames -> Bool) -> (Frames -> Bool) -> Bool 
+prop_frames2ScoreMap_eq_frames2ScoreDirect_fn frames2ScoreMap frames2ScoreDirect
+--    = fnEq frames2ScoreMap frames2ScoreDirect 
     = undefined     
+
     
