@@ -14,6 +14,7 @@ main = do
   
     let perfectGame = [(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0),(10,0)] 
 --    examples from wiki page 
+--  some new text
     let doublePinfall = [(10,0),(10,0),(9,0)] 
     let turkeyPinfall = [(10,0),(10,0),(10,0),(8,2),(8,1)]   
     let sparePinfall = [(7,3),(4,2)] 
