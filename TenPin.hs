@@ -1,6 +1,6 @@
 {- |
-   Module      : TenPin 
-   Description : TenPin scoring functions
+   Module      : Tenpin 
+   Description : Tenpin scoring functions
    Copyright   : ( c ) Matthew Lawler 2018 
    License     : 2-Clause BSD
    Maintainer  : lawlermj1@gmail.com
@@ -10,7 +10,7 @@
    Scoring will include spares and strikes, but ignore exclude fouls and splits. 
     
  -}
-module TenPin
+module Tenpin
     (  
 --    PUBLIC Types: input
       Frames( .. ), 
@@ -47,7 +47,7 @@ scoreDefault = Score [] [] [] 0
 
 ----   Input Error checking 
 
---    checks if frame pins obey tenpin rules 
+--    checks if frame pins obey Tenpin rules 
 isValidFrame :: Frame -> Either String Frame 
 isValidFrame (t1, t2) 
 --    negative throws not allowed and limit of 10 pins 
@@ -64,7 +64,7 @@ isValidFrame (t1, t2)
 inValidFrames :: Frames -> [String] 
 inValidFrames fs = lefts (map isValidFrame fs) 
     
---    checks if frame pins obey tenpin rules 
+--    checks if frame pins obey Tenpin rules 
 areAllFramesOK :: Frames -> Either String Frames  
 areAllFramesOK fs 
 --    but ok if perfect 

@@ -18,7 +18,7 @@ build-type:          Simple
 extra-source-files:  CHANGELOG.md
 
 library
-  exposed-modules:     TenPin
+  exposed-modules:     Tenpin
   -- other-modules:
   other-extensions:    FlexibleContexts
   build-depends:       base >=4.12 && <4.13
@@ -30,7 +30,7 @@ test-suite tests
    type: exitcode-stdio-1.0
    main-is: TenPinTest.hs
    build-depends:     base,
-                      tenpin,
-                      Quickcheck 
+                      Tenpin,
+                      QuickCheck 
    default-language:  Haskell2010 
  
