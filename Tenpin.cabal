@@ -15,7 +15,9 @@ maintainer:          lawlermj1@gmail.com
 -- copyright:
 category:            Game
 build-type:          Simple
-extra-source-files:  CHANGELOG.md
+extra-source-files:  CHANGELOG.md,
+                     README.md,
+                     Results.txt
 
 library
   exposed-modules:     Tenpin
