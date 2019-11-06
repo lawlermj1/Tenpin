@@ -29,6 +29,7 @@ test-suite tests
    ghc-options: -Wall
    type: exitcode-stdio-1.0
    main-is: TenPinTest.hs
+   other-modules:     Tenpin
    build-depends:     base,
                       Tenpin,
                       QuickCheck 
